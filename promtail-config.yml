@@ -9,10 +9,15 @@ clients:
   - url: http://loki:3100/loki/api/v1/push
 
 scrape_configs:
-  - job_name: system
+  - job_name: node_app
     static_configs:
       - targets:
-          - localhost
+          - node-app
         labels:
           job: varlogs
-          __path__: /var/log/*.log
+          __path__: /var/log/node-app.log
+      - targets:
+          - node-app
+        labels:
+          job: console.logs
+          __path__: /var/log/console.log

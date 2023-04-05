@@ -3,7 +3,7 @@ version: "3"
 services:
   node-app:
     container_name: node-app
-    build: .
+    image: app
     ports:
       - "3001:3001"
       - "9615:9615"
@@ -21,6 +21,7 @@ services:
     command:
       - "--config.file=/etc/prometheus/prometheus.yml"
       - "--storage.tsdb.path=/prometheus"
+      - "--storage.tsdb.retention.time=7d"
     ports:
       - "9090:9090"
     networks:
@@ -32,6 +33,10 @@ services:
     cpu_shares: 2
     ports:
       - "3000:3000"
+    volumes:
+      # - ./datasources:/etc/grafana/provisioning/datasources
+      - ./dashboards:/etc/grafana/dashboards
+      - ./provisioning:/etc/grafana/provisioning
     environment:
       GF_SECURITY_ADMIN_USER: "admin"
       GF_SECURITY_ADMIN_PASSWORD: "admin"
@@ -46,15 +51,19 @@ services:
     ports:
       - "3100:3100"
     command: -config.file=/etc/loki/local-config.yaml
+    networks:
+      - monitoring
 
   promtail:
     image: grafana/promtail:latest
     volumes:
-      - /var/log:/var/log
+      - ./logs:/var/log
       - ./promtail-config.yml:/etc/promtail/promtail-config.yml
     command: -config.file=/etc/promtail/promtail-config.yml
     depends_on:
       - loki
+    networks:
+      - monitoring
 
 networks:
   monitoring:
