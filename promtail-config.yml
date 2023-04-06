@@ -15,7 +15,7 @@ scrape_configs:
           - node-app
         labels:
           job: varlogs
-          __path__: /var/log/node-app.log
+          __path__: /var/log/combined.log
       - targets:
           - node-app
         labels:

@@ -2,8 +2,6 @@ const express = require("express");
 const app = express();
 const client = require("prom-client");
 const collectDefaultMetrics = client.collectDefaultMetrics;
-const morgan = require("morgan");
-const rfs = require("rotating-file-stream");
 const path = require("path");
 const fs = require("fs");
 const logger = require("./logger");
@@ -11,15 +9,6 @@ const logger = require("./logger");
 // 로그 디렉터리 생성
 const logDirectory = path.join(__dirname, "logs");
 fs.existsSync(logDirectory) || fs.mkdirSync(logDirectory);
-
-// 로그 스트림 설정
-const accessLogStream = rfs.createStream("node-app.log", {
-  interval: "1d",
-  path: logDirectory,
-});
-
-// morgan을 사용하여 로그 파일에 로그 기록
-app.use(morgan("combined", { stream: accessLogStream }));
 
 // 프로메테우스 기본 메트릭 수집
 collectDefaultMetrics({ timeout: 5000 });
@@ -32,6 +21,19 @@ const httpRequestDuration = new client.Histogram({
   buckets: [0.1, 0.3, 0.5, 1, 3, 5],
 });
 
+app.use((req, res, next) => {
+  const startTime = Date.now();
+  res.on("finish", () => {
+    const duration = Date.now() - startTime;
+    logger.info(`${req.method} ${req.url} ${res.statusCode} - ${duration} ms`, {
+      method: req.method,
+      url: req.url,
+      status: res.statusCode,
+    });
+  });
+  next();
+});
+
 // 미들웨어로 메트릭 수집
 app.use((req, res, next) => {
   const end = httpRequestDuration.startTimer();
@@ -39,6 +41,14 @@ app.use((req, res, next) => {
     end({ method: req.method, path: req.path, status_code: res.statusCode });
   });
   next();
+});
+
+app.use((err, req, res, next) => {
+  if (res.headersSent) {
+    return next(err);
+  }
+  logger.error({ message: err.message, status: 500 });
+  res.status(500).send("예상하지 못한 에러 발생");
 });
 
 // 프로메테우스 메트릭 엔드포인트
@@ -56,16 +66,30 @@ app.get("/metrics", (req, res) => {
 
 app.get("/err-test", (req, res) => {
   try {
+    const data = {
+      time: 1234,
+      name: "hi",
+    };
+    const data2 = {
+      time: 12345,
+      name: "hi",
+    };
+    logger.verbose("일반에러 발생 페이지 진입");
+    logger.verbose("일반 객체 출력확인 data =", data, data2);
     throw new Error("일반 에러 발생");
   } catch (err) {
-    logger.error("error: ", err);
-    res.status(500).send(err);
+    logger.error({ message: err.message, status: 500 });
+    logger.error({
+      message: err.message,
+      data: { test: "1234", message: "test" },
+      status: 500,
+    });
+    res.status(500).send(err.message);
   }
 });
 
 // ... 애플리케이션 코드
 app.listen(3001, () => {
   console.log("Listening on port 3001");
-  accessLogStream.write("Listening on part 3001 \n");
   logger.info("Listening on port 3001");
 });
