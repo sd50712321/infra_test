@@ -4,6 +4,7 @@ const client = require("prom-client");
 const collectDefaultMetrics = client.collectDefaultMetrics;
 const path = require("path");
 const fs = require("fs");
+require("dotenv").config();
 const logger = require("./logger");
 
 // 로그 디렉터리 생성
@@ -22,14 +23,29 @@ const httpRequestDuration = new client.Histogram({
 });
 
 app.use((req, res, next) => {
+  if (req.url === "/metrics") {
+    return next();
+  }
   const startTime = Date.now();
   res.on("finish", () => {
     const duration = Date.now() - startTime;
-    logger.info(`${req.method} ${req.url} ${res.statusCode} - ${duration} ms`, {
-      method: req.method,
-      url: req.url,
-      status: res.statusCode,
-    });
+    let logLevel = "info";
+
+    if (res.statusCode >= 400 && res.statusCode < 500) {
+      logLevel = "warn";
+    } else if (res.statusCode >= 500) {
+      logLevel = "error";
+    }
+
+    logger.log(
+      logLevel,
+      `${req.method} ${req.url} ${res.statusCode} - ${duration} ms`,
+      {
+        method: req.method,
+        url: req.url,
+        status: res.statusCode,
+      }
+    );
   });
   next();
 });
@@ -76,6 +92,7 @@ app.get("/err-test", (req, res) => {
     };
     logger.verbose("일반에러 발생 페이지 진입");
     logger.verbose("일반 객체 출력확인 data =", data, data2);
+    logger.warn("경고");
     throw new Error("일반 에러 발생");
   } catch (err) {
     logger.error({ message: err.message, status: 500 });
