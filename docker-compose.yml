@@ -12,12 +12,15 @@ services:
       - loki
     networks:
       - monitoring
+    volumes:
+      - ./logs:/usr/src/app/logs
 
   prometheus:
     image: prom/prometheus
     container_name: prometheus
     volumes:
       - ./prometheus.yml:/etc/prometheus/prometheus.yml
+      - ./prometheus-data:/prometheus
     command:
       - "--config.file=/etc/prometheus/prometheus.yml"
       - "--storage.tsdb.path=/prometheus"
@@ -37,9 +40,10 @@ services:
       # - ./datasources:/etc/grafana/provisioning/datasources
       - ./dashboards:/etc/grafana/dashboards
       - ./provisioning:/etc/grafana/provisioning
+      - ./grafana-data:/var/lib/grafana
     environment:
-      GF_SECURITY_ADMIN_USER: "admin"
-      GF_SECURITY_ADMIN_PASSWORD: "admin"
+      GF_SECURITY_ADMIN_USER: "${GF_SECURITY_ADMIN_USER}"
+      GF_SECURITY_ADMIN_PASSWORD: "${GF_SECURITY_ADMIN_PASSWORD}"
     depends_on:
       - prometheus
       - loki
@@ -48,6 +52,8 @@ services:
 
   loki:
     image: grafana/loki:latest
+    volumes:
+      - ./loki-data:/loki
     ports:
       - "3100:3100"
     command: -config.file=/etc/loki/local-config.yaml
@@ -57,7 +63,8 @@ services:
   promtail:
     image: grafana/promtail:latest
     volumes:
-      - ./logs:/var/log
+      - ./loki-data:/loki
+      - ./logs:/usr/src/app/logs
       - ./promtail-config.yml:/etc/promtail/promtail-config.yml
     command: -config.file=/etc/promtail/promtail-config.yml
     depends_on:
