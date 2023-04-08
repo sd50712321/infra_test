@@ -16,6 +16,10 @@ const logMessageFormat = winston.format.printf((info) => {
   const logContent = messageParts.join(" ");
 
   if (status && method && url) {
+    // `/metrics` 엔드포인트에 대한 로그를 건너뛰기 위한 조건 추가
+    if (url === "/metrics") {
+      return false;
+    }
     return `${timestamp} [Instance ${instance}] ${level}: ${method} ${url} ${status} - ${logContent}`;
   }
   return `${timestamp} [Instance ${instance}] ${level}: ${logContent}`;
@@ -46,7 +50,10 @@ const consoleLogFormat = winston.format.combine(
 );
 
 const fileLogFormat = winston.format.combine(
-  winston.format.timestamp({ format: "YYYY-MM-DD HH:mm:ss" }),
+  winston.format.timestamp({
+    format: "YYYY-MM-DD HH:mm:ss",
+    offset: 9 * 60 * 60 * 1000,
+  }),
   winston.format.errors({ stack: true }),
   winston.format((info, opts) => {
     const args = info[Symbol.for("splat")];
