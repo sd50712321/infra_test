@@ -82,7 +82,7 @@ const fileLogFormat = winston.format.combine(
 // });
 
 const logger = winston.createLogger({
-  level: process.env.NODE_ENV === "production" ? "info" : "silly",
+  level: process.env.NODE_ENV === "production" ? "warn" : "silly",
   transports: [
     new winston.transports.Console({
       format: consoleLogFormat,
@@ -90,7 +90,7 @@ const logger = winston.createLogger({
     new winston.transports.File({
       filename: `logs/combined.log`,
       format: fileLogFormat,
-      maxsize: 3 * 1024 * 1024 * 1024, // 3GB
+      maxsize: 1 * 1024 * 1024 * 1024, // 1GB
       maxFiles: 1,
     }),
   ],
