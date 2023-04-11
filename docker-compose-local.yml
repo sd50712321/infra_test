@@ -13,14 +13,13 @@ services:
     networks:
       - monitoring
     environment:
-      NODE_ENV: "development"
+      NODE_ENV: "production"
       DB_HOST: "${DB_HOST}"
       DB_USER: "${DB_USERNAME}"
       DB_PASSWORD: "${DB_PASSWORD}"
       DB_NAME: "${DB_DATABASE}"
       DB_PORT: "${DB_PORT}"
       DB_DIALECT: "${DB_DIALECT}"
-      CONTAINER_NAME: node-app # 추가된 환경 변수
     volumes:
       - ./logs:/usr/src/app/logs
 
