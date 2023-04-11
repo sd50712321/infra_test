@@ -1,7 +1,8 @@
 const winston = require("winston");
 
 const logMessageFormat = winston.format.printf((info) => {
-  const { timestamp, level, status, method, url, message, ...rest } = info;
+  const { timestamp, level, status, method, url, message, response, ...rest } =
+    info;
   const instance = process.env.NODE_APP_INSTANCE || 0;
 
   const stringify = (value) => {
@@ -50,6 +51,7 @@ const consoleLogFormat = winston.format.combine(
 );
 
 const fileLogFormat = winston.format.combine(
+  winston.format.colorize(),
   winston.format.timestamp({
     format: "YYYY-MM-DD HH:mm:ss",
     offset: 9 * 60 * 60 * 1000,
