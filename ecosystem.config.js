@@ -17,5 +17,11 @@ module.exports = {
       merge_logs: true,
       time: true,
     },
+    // cronjob 설정 추가
+    // {
+    //   name: "cronjob",
+    //   script: "cronjob.js",
+    //   cron_restart: "*/10 * * * * *",
+    // },
   ],
 };
