@@ -5,27 +5,52 @@ const OrderModel = require("./order");
 const logger = require("../logger");
 require("dotenv").config();
 
-const isProduction = process.env.NODE_ENV === "production";
+const env = process.env.NODE_ENV || "development";
+const isProduction = env === "production";
+const isLocal = env === "local";
+const isDevelopment = env === "development";
 
-const dbConfig = {
-  dialect: isProduction ? process.env.DB_DIALECT : "sqlite",
-  host: isProduction ? process.env.DB_HOST : "",
-  port: isProduction ? process.env.DB_PORT : "",
-  pool: {
-    max: 300, // 최대 커넥션 수
-    min: 0, // 최소 커넥션 수
-    acquire: 30000, // 커넥션 획득 시간
-    idle: 10000, // 커넥션이 유휴 상태로 있을 시간
+const config = {
+  production: {
+    dialect: process.env.DB_DIALECT,
+    host: process.env.DB_HOST,
+    port: process.env.DB_PORT,
+    pool: {
+      max: 300,
+      min: 0,
+      acquire: 30000,
+      idle: 10000,
+    },
+    logging: true,
   },
-  logging: true,
+  development: {
+    dialect: process.env.DB_DIALECT,
+    host: process.env.DB_HOST,
+    port: process.env.DB_PORT,
+    pool: {
+      max: 300,
+      min: 0,
+      acquire: 30000,
+      idle: 10000,
+    },
+    logging: true,
+  },
+  local: {
+    dialect: "sqlite",
+    storage: "db_local.sqlite",
+    logging: true,
+  },
 };
 
+const dbConfig = config[env];
+
 const sequelize = new Sequelize(
-  isProduction ? process.env.DB_DATABASE : "sqlite::memory:",
-  isProduction ? process.env.DB_USERNAME : "",
-  isProduction ? process.env.DB_PASSWORD : "",
+  process.env.DB_DATABASE || "sqlite::memory:",
+  process.env.DB_USERNAME || "",
+  process.env.DB_PASSWORD || "",
   dbConfig
 );
+
 logger.info(process.env);
 logger.info(dbConfig);
 
