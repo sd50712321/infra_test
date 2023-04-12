@@ -18,8 +18,3 @@ scrape_configs:
     static_configs:
       - targets: ["node-app:3001"]
     metrics_path: "/metrics"
-
-  - job_name: "my_app_pm2_metrics"
-    static_configs:
-      - targets: ["node-app:3001"]
-    metrics_path: "/metrics/pm2"
