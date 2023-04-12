@@ -4,7 +4,7 @@ const path = require("path");
 const fs = require("fs");
 require("dotenv").config();
 const logger = require("./logger");
-const { sequelize, User } = require("./models");
+const { sequelize, User, Order } = require("./models");
 const metricsMiddleware = require("./middlewares/metricMiddlewares");
 const getMetrics = require("./middlewares/metricPm2Middlewares");
 const responseLoggingMiddleware = require("./middlewares/responseLoggingMiddleware");
@@ -14,15 +14,28 @@ collectDefaultMetrics({ timeout: 5000 });
 const { execSync } = require("child_process");
 
 let containerName = "";
-try {
-  containerName = execSync(
-    "cat /proc/self/cgroup | grep 'docker' | sed 's/^.*\\///' | tail -n1"
-  )
-    .toString()
-    .trim();
-} catch (error) {
-  logger.error("Could not get container name:", error);
+const isDocker = fs.existsSync("/proc/self/cgroup");
+
+if (isDocker) {
+  try {
+    containerName = execSync(
+      "cat /proc/self/cgroup | grep 'docker' | sed 's/^.*\\///' | tail -n1"
+    )
+      .toString()
+      .trim();
+  } catch (error) {
+    logger.error("Could not get container name:", error);
+  }
 }
+// try {
+//   containerName = execSync(
+//     "cat /proc/self/cgroup | grep 'docker' | sed 's/^.*\\///' | tail -n1"
+//   )
+//     .toString()
+//     .trim();
+// } catch (error) {
+//   logger.error("Could not get container name:", error);
+// }
 
 (async () => {
   await sequelize.sync();
@@ -33,6 +46,10 @@ try {
       email: `user${i}@example.com`,
     });
   }
+  await Order.create({
+    product: "Sample Product",
+    price: 10000,
+  });
 })();
 
 // 로그 디렉터리 생성
@@ -172,6 +189,89 @@ app.put("/users/1", async (req, res) => {
   } catch (error) {
     logger.error(error);
     res.status(500).send({ message: "Error updating user email" });
+  }
+});
+
+// 동시성 해결 못함
+// app.post("/api/orders/decrement", async (req, res) => {
+//   try {
+//     const orderId = req.body.orderId;
+
+//     const order = await Order.findByPk(orderId);
+//     if (!order) {
+//       return res.status(404).json({ message: "Order not found" });
+//     }
+
+//     if (order.price >= 100) {
+//       order.price -= 100;
+//       await order.save();
+//     }
+
+//     res.json(order);
+//   } catch (err) {
+//     logger.error(err);
+//     res.status(500).json({ message: "Internal server error" });
+//   }
+// });
+
+//
+app.post("/api/orders/decrement", async (req, res) => {
+  try {
+    const orderId = req.body.orderId;
+
+    // Start a new transaction
+    const transaction = await sequelize.transaction();
+
+    try {
+      // Lock the order record for update within the transaction
+      const order = await Order.findByPk(orderId, {
+        lock: transaction.LOCK.UPDATE,
+        transaction,
+      });
+      if (!order) {
+        await transaction.rollback();
+        return res.status(404).json({ message: "Order not found" });
+      }
+
+      if (order.price >= 100) {
+        // Decrement the price within the transaction
+        order.price -= 100;
+        await order.save({ transaction });
+
+        // Commit the transaction
+        await transaction.commit();
+      } else {
+        // Release the lock by rolling back the transaction
+        await transaction.rollback();
+      }
+
+      res.json(order);
+    } catch (err) {
+      // Rollback the transaction in case of an error
+      await transaction.rollback();
+      throw err;
+    }
+  } catch (err) {
+    logger.error(err);
+    res.status(500).json({ message: "Internal server error" });
+  }
+});
+
+// GET /api/orders/:id 엔드포인트를 생성합니다.
+app.get("/api/orders/:id", async (req, res) => {
+  const orderId = parseInt(req.params.id, 10);
+
+  try {
+    const order = await Order.findByPk(orderId);
+
+    if (!order) {
+      res.status(404).send({ message: "Order not found" });
+    } else {
+      res.send(order);
+    }
+  } catch (error) {
+    logger.error(error);
+    res.status(500).send({ message: "Internal server error" });
   }
 });
 
