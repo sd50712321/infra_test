@@ -17,7 +17,7 @@ const labels = [
   "interpreter",
   "node_version",
   "hostname",
-  "container_id",
+  // "container_id",
 ];
 const map = [
   ["up", "Is the process running"],
@@ -61,7 +61,7 @@ const getMetrics = async () => {
           interpreter: p.pm2_env.exec_interpreter,
           node_version: p.pm2_env.node_version,
           hostname: os.hostname(),
-          container_id: containerId,
+          // container_id: containerId,
         };
 
         const values = {
